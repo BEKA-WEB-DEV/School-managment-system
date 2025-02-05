@@ -1,0 +1,263 @@
+openapi: 3.0.0
+info:
+  title: School Management System API
+  version: 1.0.0
+  description: |
+    API documentation for managing school operations including students, employees, exams, payments, and more.
+    All endpoints require authentication unless otherwise noted.
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development server
+  - url: https://api.schoolsystem.com/api/v1
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        requestId:
+          type: string
+        details:
+          type: array
+          items:
+            type: object
+
+    Student:
+      type: object
+      properties:
+        student_id:
+          type: string
+          example: "STU1234567"
+        grade_level:
+          type: string
+          example: "10th Grade"
+        section:
+          type: string
+          example: "Section A"
+        status:
+          type: string
+          enum: [Active, Inactive]
+        details:
+          $ref: "#/components/schemas/StudentInfo"
+
+    StudentInfo:
+      type: object
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum: [Male, Female]
+
+    AuthToken:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            type:
+              type: string
+
+paths:
+  # Authentication Endpoints
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userType:
+                  type: string
+                  enum: [student, employee, admin, parent]
+                identifier:
+                  type: string
+                password:
+                  type: string
+      responses:
+        200:
+          description: Successfully logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthToken"
+        401:
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # Student Endpoints
+  /students:
+    get:
+      tags: [Students]
+      summary: Get all students
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        200:
+          description: List of students
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Student"
+
+    post:
+      tags: [Students]
+      summary: Create new student
+      security:
+        - bearerAuth: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Student"
+      responses:
+        201:
+          description: Student created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+
+  # Employee Endpoints
+  /employees:
+    get:
+      tags: [Employees]
+      summary: Get all employees
+      security:
+        - bearerAuth: [admin]
+      responses:
+        200:
+          description: List of employees
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+
+  # Exam Endpoints
+  /exams:
+    post:
+      tags: [Exams]
+      summary: Schedule new exam
+      security:
+        - bearerAuth: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                exam_datetime:
+                  type: string
+                  format: date-time
+                duration:
+                  type: integer
+                  description: Duration in minutes
+      responses:
+        201:
+          description: Exam created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Exam"
+
+  # Payment Endpoints
+  /payments:
+    post:
+      tags: [Payments]
+      summary: Create payment record
+      security:
+        - bearerAuth: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                student_id:
+                  type: string
+                amount:
+                  type: number
+                payment_purpose:
+                  type: string
+      responses:
+        201:
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  # Common Responses
+  responses:
+    UnauthorizedError:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

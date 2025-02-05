@@ -1,0 +1,194 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap");
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+.container {
+  display: flex;
+  place-self: center;
+  gap: 20px;
+  max-width: 850px;
+  width: 100%;
+  min-height: 50vh;
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+  margin: 0 auto;
+  overflow: hidden;
+  font-family: "Poppins", sans-serif;
+  position: absolute;
+  grid-area: auto;
+  z-index: 1;
+}
+
+/* Form Section */
+.form {
+  flex: 1;
+  background: #fff;
+  padding: 40px 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.input_boxes,
+.input_box {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+/* Style for the select dropdown */
+.input_boxes select {
+  width: 100%;
+  padding: 12px 40px 12px 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  outline: none;
+  background: #fff;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%237d2ae8' d='M0 0l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px;
+}
+
+/* Input fields */
+.input_box input {
+  width: 100%;
+  padding: 12px 40px 12px 40px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  outline: none;
+  transition: border 0.3s ease;
+}
+
+.input_box input:focus,
+.input_box input:valid {
+  border-color: #7d2ae8;
+}
+
+/* Icons for input fields */
+.input_box i {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #7d2ae8;
+  font-size: 18px;
+}
+
+/* Error message styling */
+.error {
+  color: red;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+/* "Forgot password?" link */
+.text {
+  margin: 10px 0;
+  text-align: right;
+}
+
+.text a {
+  text-decoration: none;
+  color: #7d2ae8;
+  transition: color 0.3s ease;
+}
+
+.text a:hover {
+  color: #5b13b9;
+}
+
+/* Submit button styling */
+.button {
+  text-align: center;
+}
+
+.button input {
+  background: #7d2ae8;
+  border: none;
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  width: 100%;
+}
+
+.button input:hover {
+  background: #5b13b9;
+}
+
+/* Cover Section with Background Image */
+.cover {
+  flex: 1;
+  position: relative;
+  background: url("../../assets/images/login_img.png") no-repeat center center;
+  background-size: cover;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+/* Optional overlay on the cover for better text readability */
+.cover::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+
+.cover .image {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Cover text styles */
+.cover .text {
+  color: #fff;
+  text-align: center;
+  padding: 20px;
+  z-index: 3;
+}
+
+.text_1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  line-height: 1.2;
+}
+
+.text_2 {
+  font-size: 18px;
+  font-weight: 400;
+}
+
+/* Responsive adjustments */
+@media (max-width: 730px) {
+  .container {
+    flex-direction: column;
+  }
+  .cover {
+    display: none;
+  }
+}
