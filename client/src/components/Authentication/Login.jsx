@@ -29,7 +29,6 @@ const Login = () => {
           <div className={styles.title}>Login</div>
           <form onSubmit={handleSubmit}>
             <div className={styles.input_boxes}>
-              {/* <i className="fas fa-users"></i> */}
               <select
                 value={userType}
                 onChange={(e) => setUserType(e.target.value)}
@@ -42,7 +41,7 @@ const Login = () => {
                 <option value="parent">Parent</option>
               </select>
             </div>
-            {/* User ID input with a lock icon (change to fa-user if desired) */}
+            {/* User ID input with a user icon */}
             <div className={styles.input_box}>
               <i className="fas fa-user"></i>
               <input
@@ -74,7 +73,6 @@ const Login = () => {
             </div>
           </form>
         </div>
-
         <div className={styles.cover}>
           <div className={styles.image}>
             <div className={styles.text}>

@@ -1,9 +1,19 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap");
+
+body, html {
+  height: 100%;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
+
 .container {
   display: flex;
   place-self: center;
@@ -12,11 +22,9 @@
   width: 100%;
   min-height: 50vh;
   box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-  margin: 0 auto;
   overflow: hidden;
   font-family: "Poppins", sans-serif;
-  position: absolute;
-  grid-area: auto;
+  position: relative;
   z-index: 1;
 }
 
@@ -46,25 +54,32 @@
 /* Style for the select dropdown */
 .input_boxes select {
   width: 100%;
-  padding: 12px 40px 12px 10px;
+  padding: 12px 40px 12px 16px;
   border: 1px solid #ccc;
-  border-radius: 4px;
+  border-radius: 25px;
   font-size: 16px;
   outline: none;
   background: #fff;
   appearance: none;
   background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%237d2ae8' d='M0 0l5 5 5-5z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 10px center;
+  background-position: right 12px center;
   background-size: 10px;
+}
+
+.input_boxes select:hover {
+  border-color: #7d2ae8;
 }
 
 /* Input fields */
 .input_box input {
   width: 100%;
   padding: 12px 40px 12px 40px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border-bottom: 1px solid #ccc;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  /* border-radius: 4px; */
   font-size: 16px;
   outline: none;
   transition: border 0.3s ease;
@@ -83,6 +98,9 @@
   transform: translateY(-50%);
   color: #7d2ae8;
   font-size: 18px;
+  
+  z-index: initial;
+  pointer-events: none; /* Prevents clicking on the icon */
 }
 
 /* Error message styling */
@@ -188,6 +206,7 @@
   .container {
     flex-direction: column;
   }
+
   .cover {
     display: none;
   }
