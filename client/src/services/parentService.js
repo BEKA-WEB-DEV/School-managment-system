@@ -1,9 +1,17 @@
-import apiClient from "./apiClient";
+// src/services/parentService.js
+import axios from 'axios';
 
-export const parentService = {
-  linkStudent: (parentId, studentId) =>
-    apiClient.post(`/parents/${parentId}/students/${studentId}`),
-  getChildren: (parentId) => apiClient.get(`/parents/${parentId}/students`),
-  updateContact: (parentId, data) =>
-    apiClient.put(`/parents/${parentId}/contact`, data),
+const API_URL = 'http://localhost:3000/api/v1';
+
+const parentService = {
+    getChildren: async () => {
+        const response = await axios.get(`${API_URL}/parents/children`);
+        return response;
+    },
+    getExamResultsForChildren: async (childrenIds) => {
+        const response = await axios.post(`${API_URL}/exam/results`, { childrenIds });
+        return response;
+    },
 };
+
+export default parentService;

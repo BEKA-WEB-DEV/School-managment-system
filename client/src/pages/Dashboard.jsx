@@ -1,52 +1,40 @@
 // src/pages/Dashboard.jsx
-import React from "react";
-import { useAuth } from "../contexts/AuthContext";
-import StudentDashboard from "../components/Dashboard/StudentDashboard";
-import ParentDashboard from "../components/Dashboard/ParentDashboard";
-import TeacherDashboard from "../components/Dashboard/TeacherDashboard";
-import RegistrarDashboard from "../components/Dashboard/RegistrarDashboard";
-import AcademicDashboard from "../components/Dashboard/AcademicDashboard";
-import AdminDashboard from "../components/Dashboard/AdminDashboard";
+import React from 'react';
+import Layout from '../components/Layout/Layout';
+import StudentDashboard from '../components/Dashboard/StudentDashboard';
+import ParentDashboard from '../components/Dashboard/ParentDashboard';
+import TeacherDashboard from '../components/Dashboard/TeacherDashboard';
+import AdminDashboard from '../components/Dashboard/AdminDashboard';
+import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard = () => {
-  const { user, selectedRole, logout } = useAuth();
+    const { selectedRole } = useAuth();
 
-  if (!user) {
-    return <div>Loading...</div>;
-  }
+    let dashboardComponent;
 
-  let dashboardComponent;
+    switch (selectedRole) {
+        case 'student':
+            dashboardComponent = <StudentDashboard />;
+            break;
+        case 'parent':
+            dashboardComponent = <ParentDashboard />;
+            break;
+        case 'teacher':
+            dashboardComponent = <TeacherDashboard />;
+            break;
+        case 'admin':
+            dashboardComponent = <AdminDashboard />;
+            break;
+        default:
+            dashboardComponent = <div>Invalid role selected</div>;
+    }
 
-  switch (selectedRole) {
-    case "student":
-      dashboardComponent = <StudentDashboard />;
-      break;
-    case "parent":
-      dashboardComponent = <ParentDashboard />;
-      break;
-    case "teacher":
-      dashboardComponent = <TeacherDashboard />;
-      break;
-    case "registrar":
-      dashboardComponent = <RegistrarDashboard />;
-      break;
-    case "academic":
-      dashboardComponent = <AcademicDashboard />;
-      break;
-    case "admin":
-      dashboardComponent = <AdminDashboard />;
-      break;
-    default:
-      dashboardComponent = <div>Invalid role selected</div>;
-  }
-
-  return (
-    <div className="dashboard">
-      <h2>Welcome, {user.user.type}</h2>
-      {dashboardComponent}
-      <button onClick={logout}>Logout</button>
-    </div>
-  );
+    return (
+        <Layout role={selectedRole}>
+            <h2>Welcome, {selectedRole}</h2>
+            {dashboardComponent}
+        </Layout>
+    );
 };
 
 export default Dashboard;

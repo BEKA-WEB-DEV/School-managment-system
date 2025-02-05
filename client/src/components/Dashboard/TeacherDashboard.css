@@ -1,0 +1,45 @@
+/* src/components/Dashboard/TeacherDashboard.css */
+.teacher-dashboard {
+    padding: 20px;
+}
+
+.dashboard-widgets {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.widget {
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 5px;
+    text-align: center;
+    width: 20%;
+}
+
+.student-stats {
+    margin-bottom: 20px;
+}
+
+.pie-chart {
+    /* Add your pie chart styles here */
+}
+
+.notifications {
+    margin-bottom: 20px;
+}
+
+.my-students table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.my-students th,
+.my-students td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+.my-students th {
+    background-color: #f2f2f2;
+}

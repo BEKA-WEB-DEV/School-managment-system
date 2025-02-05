@@ -1,49 +1,39 @@
-import { Grid } from "@mui/material";
-import PropTypes from "prop-types";
-import { FormInput, DatePicker, SelectInput } from "../common";
+// src/components/Certifications/CertificationForm.jsx
+import React, { useState } from 'react';
+import  certificationService  from '../../services/certificationService';
 
-const CertificateForm = ({ control, errors }) => (
-  <Grid container spacing={3}>
-    <Grid item xs={12}>
-      <SelectInput
-        name="studentId"
-        control={control}
-        label="Student"
-        options={[]}
-        errors={errors}
-      />
-    </Grid>
-    <Grid item xs={12} md={6}>
-      <FormInput
-        name="examName"
-        control={control}
-        label="Exam Name"
-        errors={errors}
-      />
-    </Grid>
-    <Grid item xs={12} md={6}>
-      <DatePicker
-        name="issueDate"
-        control={control}
-        label="Issue Date"
-        errors={errors}
-      />
-    </Grid>
-    <Grid item xs={12} md={6}>
-      <FormInput
-        name="score"
-        control={control}
-        label="Score"
-        type="number"
-        errors={errors}
-      />
-    </Grid>
-  </Grid>
-);
+const CertificationForm = ({ initialData, onSubmit }) => {
+    const [name, setName] = useState(initialData ? initialData.name : '');
+    const [description, setDescription] = useState(initialData ? initialData.description : '');
 
-CertificateForm.propTypes = {
-  control: PropTypes.object.isRequired,
-  errors: PropTypes.object,
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        const certification = { name, description };
+        if (initialData) {
+            await certificationService.updateCertification(initialData.id, certification);
+        } else {
+            await certificationService.createCertification(certification);
+        }
+        onSubmit();
+    };
+
+    return (
+        <form onSubmit={handleSubmit}>
+            <h2>{initialData ? 'Edit' : 'Create'} Certification</h2>
+            <input
+                type="text"
+                placeholder="Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+            />
+            <textarea
+                placeholder="Description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+            />
+            <button type="submit">{initialData ? 'Update' : 'Create'}</button>
+        </form>
+    );
 };
 
-export default CertificateForm;
+export default CertificationForm;

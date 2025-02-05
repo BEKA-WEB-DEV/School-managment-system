@@ -1,25 +1,36 @@
-import { Card, Typography, Stack } from "@mui/material";
-import PropTypes from "prop-types";
-import VerificationBadge from "./CertificationDetails";
+// src/components/Certifications/CertificationList.jsx
+import React from 'react';
+import { useEffect, useState } from 'react';
+import  certificationService  from '../../services/certificationService';
 
-const CertificateCard = ({ certificate }) => (
-  <Card sx={{ p: 2 }}>
-    <Stack spacing={1}>
-      <Typography variant="h6">{certificate.studentName}</Typography>
-      <Typography variant="body2">{certificate.examName}</Typography>
-      <Typography variant="body2">Score: {certificate.score}/100</Typography>
-      <VerificationBadge verified={certificate.verified} />
-    </Stack>
-  </Card>
-);
+const CertificationList = () => {
+    const [certifications, setCertifications] = useState([]);
 
-CertificateCard.propTypes = {
-  certificate: PropTypes.shape({
-    studentName: PropTypes.string.isRequired,
-    examName: PropTypes.string.isRequired,
-    score: PropTypes.number.isRequired,
-    verified: PropTypes.bool.isRequired,
-  }).isRequired,
+    useEffect(() => {
+        const fetchCertifications = async () => {
+            try {
+                const response = await certificationService.getAllCertifications();
+                setCertifications(response.data);
+            } catch (error) {
+                console.error('Error fetching certifications:', error);
+            }
+        };
+
+        fetchCertifications();
+    }, []);
+
+    return (
+        <div className="certification-list">
+            <h2>Certification List</h2>
+            <ul>
+                {certifications.map(certification => (
+                    <li key={certification.id}>
+                        <strong>{certification.name}</strong> - {certification.description}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
 };
 
-export default CertificateCard;
+export default CertificationList;
