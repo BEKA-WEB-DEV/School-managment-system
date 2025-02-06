@@ -22,3 +22,8 @@ export const generateEmployeeId = () => {
     const randomChars = Math.random().toString(36).slice(-4).toUpperCase();
     return `EXM-${Date.now().toString().slice(-6)}-${randomChars}`;
   }; 
+
+  export const generateCertId = () => {
+    const randomChars = Math.random().toString(36).slice(-4).toUpperCase();
+    return `CERT-${Date.now().toString().slice(-6)}-${randomChars}`;
+  }; 

@@ -1,10 +1,17 @@
-class CustomError extends Error {
-  constructor(message, statusCode = 500, details = {}) {
-    super(message);
-    this.statusCode = statusCode;
-    this.details = details;
-    this.name = this.constructor.name;
-  }
-}
+import jwt from 'jsonwebtoken';
 
-module.exports = CustomError;
+export const generateAccessToken = (payload) => {
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
+};
+
+export const generateRefreshToken = (payload) => {
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
+};
+
+export const verifyToken = (token) => {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    return null;
+  }
+};

@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import { generateAccessToken, verifyToken } from '../utils/jwtUtils.js';
 import bcrypt from 'bcrypt';
 import pool from '../config/db.js';
 
@@ -31,11 +31,7 @@ export const login = async (req, res) => {
     if (!validPassword) return res.status(401).json({ error: 'Invalid credentials' });
 
     // Generate JWT token (expires in 1 hour)
-    const accessToken = jwt.sign(
-      { id: user[idColumn], type: userType },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    const accessToken = generateAccessToken({ id: user.id, type: userType });
 
     res.json({ accessToken, user: { id: user[idColumn], type: userType } });
   } catch (error) {

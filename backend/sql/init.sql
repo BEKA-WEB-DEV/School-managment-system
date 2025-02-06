@@ -199,3 +199,15 @@ CREATE TABLE IF NOT EXISTS school_year (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+CREATE TABLE certifications (
+  cert_id VARCHAR(20) PRIMARY KEY,
+  student_id VARCHAR(10) NOT NULL,
+  cert_type ENUM('1st Semester', '2nd Semester', '3rd Semester', '4th Semester', 'Total') NOT NULL,
+  issue_date DATE NOT NULL,
+  expiry_date DATE,
+  status ENUM('Pending', 'Approved', 'Expired') DEFAULT 'Pending',
+  approved_by VARCHAR(10),
+  approval_date DATE,
+  FOREIGN KEY (student_id) REFERENCES students(student_id),
+  FOREIGN KEY (approved_by) REFERENCES admins(admin_id)
+);

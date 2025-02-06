@@ -1,5 +1,6 @@
 import pool from '../config/db.js';
 import { generateStudentId } from '../utils/idGenerator.js';
+import { hashPassword } from '../utils/passwordUtils.js';
 
 export const getStudents = async (req, res) => {
   const { page = 1, limit = 20 } = req.query;
@@ -29,8 +30,7 @@ export const createStudent = async (req, res) => {
     await connection.beginTransaction();
     const { details, ...studentData } = req.body;
 
-    // Auto-generate student ID
-    const student_id = generateStudentId();
+    const student_id = generateStudentId(); // Auto-generate instead of using client input
 
     // Insert into students_info
     await connection.query(
@@ -41,7 +41,7 @@ export const createStudent = async (req, res) => {
     // Insert into students table
     await connection.query('INSERT INTO students SET ?', {
       student_id,
-      student_password: await bcrypt.hash('TempPassword123!', 10), // Force password reset
+      student_password: await hashPassword('TempPassword123!'), // Force password reset
       grade_level_id: await resolveGradeLevelId(studentData.grade_level),
       section_id: await resolveSectionId(studentData.section),
       school_year_id: 1, // Default
@@ -55,6 +55,20 @@ export const createStudent = async (req, res) => {
     res.status(400).json({ error: 'Student creation failed' });
   } finally {
     connection.release();
+  }
+};
+
+// Fetch certifications for a student
+export const getStudentCertifications = async (req, res) => {
+  const { student_id } = req.params;
+  try {
+    const [certifications] = await pool.query(
+      'SELECT * FROM certifications WHERE student_id = ?',
+      [student_id]
+    );
+    res.json(certifications);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch certifications' });
   }
 };
 

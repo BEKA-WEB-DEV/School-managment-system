@@ -52,4 +52,12 @@ export default class Student {
     );
     return rows[0]?.grade_level_id;
   }
+
+  static async getCertifications(student_id) {
+    const [rows] = await pool.query(
+      'SELECT * FROM certifications WHERE student_id = ?',
+      [student_id]
+    );
+    return rows;
+  }
 }

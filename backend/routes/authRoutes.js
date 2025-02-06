@@ -1,19 +1,8 @@
-const express = require("express");
+import express from 'express';
+import { login } from '../controllers/authController.js';
+import { rateLimiter } from '../middleware/rateLimiter.js';
+import { validateLogin } from '../middleware/validation/authSchema.js';
+
 const router = express.Router();
-const authController = require("../controllers/authController");
-const {
-  validateLogin,
-  validateReset,
-} = require("../middleware/validationMiddleware");
-
-// Login
-router.post("/login", validateLogin, authController.login);
-
-// Refresh token
-router.post("/refresh-token", authController.refreshToken);
-
-// Password reset flow
-router.post("/forgot-password", validateReset, authController.forgotPassword);
-router.post("/reset-password", authController.resetPassword);
-
-module.exports = router;
+router.post('/login', rateLimiter, validateLogin, login);
+export default router;

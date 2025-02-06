@@ -1,46 +1,26 @@
-const express = require("express");
+import express from 'express';
+import { 
+  getLinkedStudents,
+  makePayment
+} from '../controllers/parentController.js';
+import { authenticate } from '../middleware/auth.js';
+import { paymentSchema } from '../middleware/validation/paymentSchema.js';
+
 const router = express.Router();
-const parentController = require("../controllers/parentController");
-const { authenticate, checkRole } = require("../middleware/authMiddleware");
-const { validateParent } = require("../middleware/validationMiddleware");
 
-// Get parent profile
+// GET /parents/students - Get linked students
 router.get(
-  "/parents/:id",
-  authenticate,
-  checkRole(["parent", "5", "6"]), // Parent self or Admin+
-  parentController.getParentProfile
+  '/students',
+  authenticate('parent'),
+  getLinkedStudents
 );
 
-// Update parent profile
-router.put(
-  "/parents/:id",
-  authenticate,
-  checkRole(["parent", "5", "6"]),
-  validateParent,
-  parentController.updateParentProfile
-);
-
-// Student associations
-router.get(
-  "/parents/:id/students",
-  authenticate,
-  checkRole(["parent", "5", "6"]),
-  parentController.getLinkedStudents
-);
-
+// POST /parents/payments - Make payment for student
 router.post(
-  "/parents/:id/students",
-  authenticate,
-  checkRole(["5", "6"]), // Admin only
-  parentController.addStudentToParent
+  '/payments',
+  authenticate('parent'),
+  paymentSchema,
+  makePayment
 );
 
-router.delete(
-  "/parents/:id/students/:studentId",
-  authenticate,
-  checkRole(["5", "6"]), // Admin only
-  parentController.removeStudentFromParent
-);
-
-module.exports = router;
+export default router;

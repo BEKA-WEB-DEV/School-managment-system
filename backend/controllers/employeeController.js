@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import pool from '../config/db.js';
 import { generateEmployeeId } from '../utils/idGenerator.js';
+import { hashPassword } from '../utils/passwordUtils.js';
 
 // Create new employee (Admin only)
 export const createEmployee = async (req, res) => {
@@ -54,8 +55,7 @@ export const createEmployee = async (req, res) => {
       (employee_id, employee_password, autorized_leave)
       VALUES (?, ?, ?)`,
       [
-        employee_id,
-        await bcrypt.hash(password, 10),
+        employee_password: await hashPassword('TempPassword123!'),
         employeeInfo.autorized_leave || '0'
       ]
     );
