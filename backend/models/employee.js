@@ -1,52 +1,51 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/db");
-const { logger } = require("../utils/logger");
+import pool from '../config/db.js';
 
-const Employee = sequelize.define(
-  "Employee",
-  {
-    employee_id: {
-      type: DataTypes.STRING(10),
-      primaryKey: true,
-      allowNull: false,
-    },
-    password: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
-    role: {
-      type: DataTypes.ENUM("Admin", "Registrar", "Academic", "Teacher"),
-      defaultValue: "Teacher",
-    },
-    level: {
-      type: DataTypes.ENUM("5", "4", "3", "2"),
-      defaultValue: "2",
-    },
-    status: {
-      type: DataTypes.ENUM("Active", "Inactive"),
-      defaultValue: "Active",
-    },
-  },
-  {
-    timestamps: true,
-    createdAt: "created_at",
-    updatedAt: "updated_at",
-    paranoid: true, // Enable soft deletes
-    hooks: {
-      afterCreate: (employee) => {
-        logger.info(`Employee created: ${employee.employee_id}`);
-      },
-    },
+export default class Employee {
+  // Create employee across 3 tables
+  static async create(employeeData) {
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      // Insert into employees
+      await connection.query('INSERT INTO employees SET ?', {
+        employee_id: employeeData.employee_id,
+        role: employeeData.role,
+        level: employeeData.level,
+        employee_password: employeeData.hashedPassword
+      });
+
+      // Insert into employees_info
+      await connection.query('INSERT INTO employees_info SET ?', {
+        employee_id: employeeData.employee_id,
+        ...employeeData.details
+      });
+
+      // Insert into password/leave table
+      await connection.query(
+        `INSERT INTO employees_password_and_autorized_leave 
+        (employee_id, employee_password, autorized_leave)
+        VALUES (?, ?, ?)`,
+        [employeeData.employee_id, employeeData.hashedPassword, employeeData.autorized_leave]
+      );
+
+      await connection.commit();
+      return employeeData.employee_id;
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   }
-);
 
-// Association with EmployeeInfo
-Employee.associate = (models) => {
-  Employee.hasOne(models.EmployeeInfo, {
-    foreignKey: "employee_id",
-    as: "details",
-    onDelete: "CASCADE",
-  });
-};
-
-module.exports = Employee;
+  // Get all employees with info
+  static async findAll() {
+    const [rows] = await pool.query(`
+      SELECT e.*, ei.* 
+      FROM employees e
+      JOIN employees_info ei ON e.employee_id = ei.employee_id
+    `);
+    return rows;
+  }
+}

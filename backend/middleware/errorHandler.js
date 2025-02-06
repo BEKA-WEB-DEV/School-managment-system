@@ -1,47 +1,29 @@
-const { StatusCodes } = require("http-status-codes");
-const { logger } = require("../utils/logger");
-const { validationResult } = require("express-validator");
+export const errorHandler = (err, req, res, next) => {
+  console.error(err.stack);
 
-const errorHandler = (err, req, res, next) => {
-  const requestId = req.headers["x-request-id"];
-  const statusCode = err.statusCode || StatusCodes.INTERNAL_SERVER_ERROR;
-  const message = err.message || "Internal server error";
+  const response = {
+    error: err.message || 'Internal Server Error',
+    requestId: req.requestId,
+    details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  };
 
-  // Handle validation errors
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(StatusCodes.BAD_REQUEST).json({
-      error: "Validation failed",
-      details: errors.array(),
-      requestId,
+  // Handle Joi validation errors
+  if (err.isJoi) {
+    return res.status(400).json({ 
+      ...response,
+      error: 'Validation Error',
+      details: err.details 
     });
   }
 
-  // Sequelize database errors
-  if (err.name?.includes("Sequelize")) {
-    logger.error(`Database error: ${err.message} | Request ID: ${requestId}`);
-    return res.status(StatusCodes.BAD_REQUEST).json({
-      error: "Database operation failed",
-      details: err.errors?.map((e) => e.message),
-      requestId,
+  // Handle database errors
+  if (err.code?.startsWith('ER_')) {
+    return res.status(400).json({
+      ...response,
+      error: 'Database Error',
+      details: process.env.NODE_ENV === 'development' ? err.sqlMessage : undefined
     });
   }
 
-  // JWT errors
-  if (err.name === "JsonWebTokenError") {
-    return res.status(StatusCodes.UNAUTHORIZED).json({
-      error: "Invalid authentication token",
-      requestId,
-    });
-  }
-
-  logger.error(`${statusCode} - ${message} | Request ID: ${requestId}`);
-
-  res.status(statusCode).json({
-    error: message,
-    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-    requestId,
-  });
+  res.status(err.statusCode || 500).json(response);
 };
-
-module.exports = errorHandler;

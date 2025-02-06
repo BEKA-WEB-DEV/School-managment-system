@@ -1,167 +1,86 @@
-const bcrypt = require("bcryptjs");
-const { Employee, EmployeeInfo } = require("../models");
-const { logger } = require("../utils/logger");
+import bcrypt from 'bcrypt';
+import pool from '../config/db.js';
+import { generateEmployeeId } from '../utils/idGenerator.js';
 
-const employeeController = {
-  // Create employee with info
-  createEmployee: async (req, res) => {
-    const transaction = await sequelize.transaction();
-    try {
-      const { password, ...employeeData } = req.body;
-      const hashedPassword = await bcrypt.hash(password, 10);
+// Create new employee (Admin only)
+export const createEmployee = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    
+    const { 
+      role = 'Teacher', 
+      level = '2', 
+      password, 
+      ...employeeInfo 
+    } = req.body;
 
-      // Validate employee ID format according to there role eg. ADM1234567 for Admin, REG1234567 for Registrar, etc.
+    // Generate employee ID
+    const employee_id = generateEmployeeId();
 
-      // Check if employee ID format is valid
-      if (!/^ADM\d{7}$/.test(employeeData.employee_id)) {
-        await transaction.rollback();
-        return res.status(400).json({ error: "Invalid employee ID format" });
-      } else if (!/^REG\d{7}$/.test(employeeData.employee_id)) {
-        await transaction.rollback();
-        return res.status(400).json({ error: "Invalid employee ID format" });
-      } else if (!/^TEA\d{7}$/.test(employeeData.employee_id)) {
-        await transaction.rollback();
-        return res.status(400).json({ error: "Invalid employee ID format" });
-      } else if (!/^ACA\d{7}$/.test(employeeData.employee_id)) {
-        await transaction.rollback();
-        return res.status(400).json({ error: "Invalid employee ID format" });
-      }
+    // Insert into employees table
+    await connection.query(
+      `INSERT INTO employees 
+      (employee_id, role, level, employee_password)
+      VALUES (?, ?, ?, ?)`,
+      [
+        employee_id,
+        role,
+        level,
+        await bcrypt.hash(password, 10)
+      ]
+    );
 
-      // Check if employee already exists
-      const existingEmployee = await Employee.findOne({
-        where: { employee_id: employeeData.employee_id },
-      });
-      if (existingEmployee) {
-        await transaction.rollback();
-        return res.status(409).json({ error: "Employee already exists" });
-      }
+    // Insert into employees_info
+    await connection.query(
+      `INSERT INTO employees_info 
+      (employee_id, first_name, last_name, gender, date_of_birth, address, religion, current_salary)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        employee_id,
+        employeeInfo.first_name,
+        employeeInfo.last_name,
+        employeeInfo.gender,
+        employeeInfo.date_of_birth,
+        employeeInfo.address,
+        employeeInfo.religion,
+        employeeInfo.current_salary
+      ]
+    );
 
-      const employee = await Employee.create(
-        {
-          ...employeeData,
-          password: hashedPassword,
-        },
-        { transaction }
-      );
+    // Insert into employees_password_and_autorized_leave
+    await connection.query(
+      `INSERT INTO employees_password_and_autorized_leave 
+      (employee_id, employee_password, autorized_leave)
+      VALUES (?, ?, ?)`,
+      [
+        employee_id,
+        await bcrypt.hash(password, 10),
+        employeeInfo.autorized_leave || '0'
+      ]
+    );
 
-      await EmployeeInfo.create(
-        {
-          employee_id: employee.employee_id,
-          ...req.body,
-        },
-        { transaction }
-      );
-
-      await transaction.commit();
-      res.status(201).json(employee);
-    } catch (error) {
-      await transaction.rollback();
-      logger.error(`Employee creation error: ${error.message}`);
-      res.status(400).json({ error: error.message });
-    }
-  },
-
-  // Get all employees with pagination
-  getAllEmployees: async (req, res) => {
-    try {
-      const { page = 1, limit = 20, role } = req.query;
-      const whereClause = role ? { role } : {};
-
-      const employees = await Employee.findAndCountAll({
-        where: whereClause,
-        limit: parseInt(limit),
-        offset: (page - 1) * limit,
-        include: [{ model: EmployeeInfo, as: "details" }],
-      });
-
-      res.json({
-        total: employees.count,
-        page: parseInt(page),
-        totalPages: Math.ceil(employees.count / limit),
-        data: employees.rows,
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Server error" });
-    }
-  },
-
-  // Get single employee
-  getEmployeeById: async (req, res) => {
-    try {
-      const employee = await Employee.findByPk(req.params.id, {
-        include: [{ model: EmployeeInfo, as: "details" }],
-      });
-
-      if (!employee)
-        return res.status(404).json({ error: "Employee not found" });
-      res.json(employee);
-    } catch (error) {
-      res.status(500).json({ error: "Server error" });
-    }
-  },
-
-  // Update employee profile
-  updateEmployee: async (req, res) => {
-    const transaction = await sequelize.transaction();
-    try {
-      const employee = await Employee.findByPk(req.params.id, { transaction });
-      if (!employee)
-        return res.status(404).json({ error: "Employee not found" });
-
-      // Update password if provided
-      if (req.body.password) {
-        req.body.password = await bcrypt.hash(req.body.password, 10);
-      }
-
-      await employee.update(req.body, { transaction });
-      await EmployeeInfo.update(req.body, {
-        where: { employee_id: req.params.id },
-        transaction,
-      });
-
-      await transaction.commit();
-      res.json(employee);
-    } catch (error) {
-      await transaction.rollback();
-      logger.error(`Employee update error: ${error.message}`);
-      res.status(400).json({ error: error.message });
-    }
-  },
-
-  // Update salary (Admin only)
-  updateSalary: async (req, res) => {
-    try {
-      const employee = await EmployeeInfo.findByPk(req.params.id);
-      if (!employee)
-        return res.status(404).json({ error: "Employee not found" });
-
-      const { current_salary } = req.body;
-      if (isNaN(current_salary)) {
-        return res.status(400).json({ error: "Invalid salary format" });
-      }
-
-      await employee.update({ current_salary });
-      logger.info(`Salary updated for ${req.params.id}`);
-      res.json(employee);
-    } catch (error) {
-      res.status(500).json({ error: "Server error" });
-    }
-  },
-
-  // Deactivate employee
-  deactivateEmployee: async (req, res) => {
-    try {
-      const employee = await Employee.findByPk(req.params.id);
-      if (!employee)
-        return res.status(404).json({ error: "Employee not found" });
-
-      await employee.update({ status: "Inactive" });
-      logger.warn(`Employee deactivated: ${req.params.id}`);
-      res.json({ message: "Employee deactivated" });
-    } catch (error) {
-      res.status(500).json({ error: "Server error" });
-    }
-  },
+    await connection.commit();
+    res.status(201).json({ employee_id });
+  } catch (error) {
+    await connection.rollback();
+    res.status(400).json({ error: 'Employee creation failed' });
+  } finally {
+    connection.release();
+  }
 };
 
-module.exports = employeeController;
+// Get all employees
+export const getEmployees = async (req, res) => {
+  try {
+    const [employees] = await pool.query(`
+      SELECT e.employee_id, e.role, e.level, e.status,
+        ei.first_name, ei.last_name, ei.current_salary
+      FROM employees e
+      JOIN employees_info ei ON e.employee_id = ei.employee_id
+    `);
+    res.json(employees);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch employees' });
+  }
+};

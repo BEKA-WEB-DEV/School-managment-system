@@ -1,110 +1,26 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/db");
-const { logger } = require("../utils/logger");
+import pool from '../config/db.js';
 
-const Exam = sequelize.define(
-  "Exam",
-  {
-    exam_id: {
-      type: DataTypes.STRING(10),
-      primaryKey: true,
-      allowNull: false,
-    },
-    grade_level: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-      references: {
-        model: "grade_level",
-        key: "grade_level",
-      },
-    },
-    subject_name: {
-      type: DataTypes.STRING(10),
-      allowNull: false,
-      references: {
-        model: "subjects",
-        key: "subject_name",
-      },
-    },
-    section_name: {
-      type: DataTypes.STRING(50),
-      allowNull: false,
-      references: {
-        model: "sections",
-        key: "section_name",
-      },
-    },
-    exam_type: {
-      type: DataTypes.ENUM("Test", "Quiz", "Midterm", "Final", "Assessment"),
-      allowNull: false,
-    },
-    exam_datetime: {
-      type: DataTypes.DATE,
-      allowNull: false,
-    },
-    duration: {
-      type: DataTypes.INTEGER, // in minutes
-      allowNull: false,
-    },
-    school_year_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: "school_year",
-        key: "school_year_id",
-      },
-    },
-    semester: {
-      type: DataTypes.ENUM(
-        "1st Semester",
-        "2nd Semester",
-        "3rd Semester",
-        "4th Semester"
-      ),
-      allowNull: false,
-    },
-    status: {
-      type: DataTypes.ENUM("Scheduled", "Ongoing", "Completed", "Cancelled"),
-      defaultValue: "Scheduled",
-    },
-  },
-  {
-    timestamps: true,
-    createdAt: "created_at",
-    updatedAt: "updated_at",
-    paranoid: true,
-    hooks: {
-      afterCreate: (exam) => {
-        logger.info(`Exam scheduled: ${exam.exam_id}`);
-      },
-    },
-    indexes: [
-      { fields: ["exam_datetime"] },
-      { fields: ["grade_level"] },
-      { fields: ["subject_name"] },
-    ],
+export default class Exam {
+  // Schedule new exam
+  static async create(examData) {
+    const [result] = await pool.query('INSERT INTO exams SET ?', {
+      exam_id: examData.exam_id,
+      exam_datetime: examData.exam_datetime,
+      duration: examData.duration,
+      grade_level_id: examData.grade_level_id,
+      section_id: examData.section_id,
+      employee_id: examData.employee_id,
+      school_year_id: 1 // Default
+    });
+    return result.insertId;
   }
-);
 
-// Associations
-Exam.associate = (models) => {
-  Exam.belongsTo(models.Employee, {
-    foreignKey: "employee_id",
-    as: "teacher",
-  });
-  Exam.belongsTo(models.SchoolYear, {
-    foreignKey: "school_year_id",
-  });
-  Exam.hasMany(models.Result, {
-    foreignKey: "exam_id",
-  });
-};
-
-// Scopes
-Exam.addScope("active", {
-  where: {
-    status: ["Scheduled", "Ongoing"],
-  },
-});
-
-module.exports = Exam;
+  // Get exams by grade level
+  static async findByGradeLevel(grade_level_id) {
+    const [rows] = await pool.query(
+      'SELECT * FROM exams WHERE grade_level_id = ?',
+      [grade_level_id]
+    );
+    return rows;
+  }
+}

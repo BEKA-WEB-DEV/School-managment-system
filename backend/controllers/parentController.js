@@ -1,121 +1,165 @@
-const bcrypt = require("bcryptjs");
-const { Parent, ParentInfo, Student, ParentStudent } = require("../models"); // Import models for parent, parent info, student, and parent-student association
-const { logger } = require("../utils/logger");
+import bcrypt from 'bcrypt';
+import pool from '../config/db.js';
+import { generateParentId } from '../utils/idGenerator.js'; // Auto-generate IDs
 
-const parentController = {
-  // Get parent profile
-  getParentProfile: async (req, res) => {
-    try {
-      const parent = await Parent.findByPk(req.params.id, {
-        include: [
-          { model: ParentInfo, as: "details" },
-          { model: Student, as: "students" },
-        ],
-      });
+// Create parent account (with student linking)
+export const createParent = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
 
-      if (!parent) return res.status(404).json({ error: "Parent not found" });
+    const { father_first_name, mother_first_name, email, phone, password, student_id } = req.body;
+    
+    // 1. Generate unique parent ID (instead of using client-provided)
+    const parent_id = generateParentId();
 
-      // Authorization check
-      if (req.user.role !== "admin" && parent.parent_id !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
+    // 2. Insert into parents_info
+    await connection.query(
+      `INSERT INTO parents_info 
+      (parent_id, father_first_name, mother_first_name, email, phone)
+      VALUES (?, ?, ?, ?, ?)`,
+      [parent_id, father_first_name, mother_first_name, email, phone]
+    );
 
-      res.json(parent);
-    } catch (error) {
-      logger.error(`Parent profile error: ${error.message}`);
-      res.status(500).json({ error: "Server error" });
-    }
-  },
+    // 3. Hash password and insert into parents table
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await connection.query(
+      `INSERT INTO parents 
+      (parent_id, student_id, parent_password)
+      VALUES (?, ?, ?)`,
+      [parent_id, student_id, hashedPassword]
+    );
 
-  // Update parent profile
-  updateParentProfile: async (req, res) => {
-    const transaction = await sequelize.transaction();
-    try {
-      const parent = await Parent.findByPk(req.params.id, { transaction });
-      if (!parent) return res.status(404).json({ error: "Parent not found" });
+    // 4. Link to student via parent_student_association
+    await connection.query(
+      `INSERT INTO parent_student_association 
+      (student_id, parent_id)
+      VALUES (?, ?)`,
+      [student_id, parent_id]
+    );
 
-      // Update password if provided
-      if (req.body.parent_password) {
-        req.body.parent_password = await bcrypt.hash(
-          req.body.parent_password,
-          10
-        );
-      }
-
-      await parent.update(req.body, { transaction });
-      await ParentInfo.update(req.body, {
-        where: { parent_id: req.params.id },
-        transaction,
-      });
-
-      await transaction.commit();
-      res.json(parent);
-    } catch (error) {
-      await transaction.rollback();
-      logger.error(`Parent update error: ${error.message}`);
-      res.status(400).json({ error: error.message });
-    }
-  },
-
-  // Get linked students
-  getLinkedStudents: async (req, res) => {
-    try {
-      const parent = await Parent.findByPk(req.params.id, {
-        include: [{ model: Student, as: "students" }],
-      });
-
-      if (!parent) return res.status(404).json({ error: "Parent not found" });
-      res.json(parent.students);
-    } catch (error) {
-      res.status(500).json({ error: "Server error" });
-    }
-  },
-
-  // Add student association
-  addStudentToParent: async (req, res) => {
-    try {
-      const { student_id } = req.body;
-
-      // Verify student exists
-      const student = await Student.findByPk(student_id);
-      if (!student) return res.status(404).json({ error: "Student not found" });
-
-      const association = await ParentStudent.create({
-        parent_id: req.params.id,
-        student_id,
-      });
-
-      logger.info(`Student ${student_id} added to parent ${req.params.id}`);
-      res.status(201).json(association);
-    } catch (error) {
-      if (error.name === "SequelizeUniqueConstraintError") {
-        return res.status(409).json({ error: "Association already exists" });
-      }
-      res.status(500).json({ error: "Server error" });
-    }
-  },
-
-  // Remove student association
-  removeStudentFromParent: async (req, res) => {
-    try {
-      const count = await ParentStudent.destroy({
-        where: {
-          parent_id: req.params.id,
-          student_id: req.params.studentId,
-        },
-      });
-
-      if (count === 0)
-        return res.status(404).json({ error: "Association not found" });
-
-      logger.warn(
-        `Student ${req.params.studentId} removed from parent ${req.params.id}`
-      );
-      res.json({ message: "Association removed" });
-    } catch (error) {
-      res.status(500).json({ error: "Server error" });
-    }
-  },
+    await connection.commit();
+    res.status(201).json({ parent_id, message: 'Parent created successfully' });
+  } catch (error) {
+    await connection.rollback();
+    res.status(400).json({ 
+      error: 'Parent creation failed',
+      details: 'Ensure the student exists and data is valid' // Generic error
+    });
+  } finally {
+    connection.release();
+  }
 };
 
-module.exports = parentController;
+// Get parent details
+export const getParentDetails = async (req, res) => {
+  const { parent_id } = req.params;
+  try {
+    const [parentInfo] = await pool.query(
+      `SELECT * FROM parents_info 
+      WHERE parent_id = ?`,
+      [parent_id]
+    );
+    
+    if (!parentInfo.length) {
+      return res.status(404).json({ error: 'Parent not found' });
+    }
+    res.json(parentInfo[0]);
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to fetch parent details'
+    });
+  }
+};
+
+// Get all students linked to a parent
+export const getParentStudents = async (req, res) => {
+  const { parent_id } = req.params;
+  try {
+    const [students] = await pool.query(
+      `SELECT s.student_id, si.first_name, si.last_name, s.grade_level_id 
+      FROM parent_student_association psa
+      JOIN students s ON psa.student_id = s.student_id
+      JOIN students_info si ON s.student_id = si.student_id
+      WHERE psa.parent_id = ?`,
+      [parent_id]
+    );
+    
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to fetch linked students'
+    });
+  }
+};
+
+// Link additional student to parent (with password verification)
+export const linkStudentToParent = async (req, res) => {
+  const { parent_id } = req.params;
+  const { student_id, password } = req.body;
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // 1. Verify parent credentials
+    const [parent] = await connection.query(
+      `SELECT parent_password FROM parents 
+      WHERE parent_id = ? LIMIT 1`,
+      [parent_id]
+    );
+    if (!parent.length) {
+      return res.status(404).json({ error: 'Parent not found' });
+    }
+
+    // 2. Validate password
+    const validPassword = await bcrypt.compare(password, parent[0].parent_password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid password' });
+    }
+
+    // 3. Link new student
+    await connection.query(
+      `INSERT INTO parent_student_association 
+      (student_id, parent_id)
+      VALUES (?, ?)`,
+      [student_id, parent_id]
+    );
+
+    await connection.commit();
+    res.json({ message: 'Student linked successfully' });
+  } catch (error) {
+    await connection.rollback();
+    res.status(400).json({ 
+      error: 'Student linking failed',
+      details: 'Student may not exist or already linked'
+    });
+  } finally {
+    connection.release();
+  }
+};
+
+// Update parent contact info
+export const updateParentContact = async (req, res) => {
+  const { parent_id } = req.params;
+  const { email, phone } = req.body;
+  
+  try {
+    const [result] = await pool.query(
+      `UPDATE parents_info 
+      SET email = ?, phone = ?
+      WHERE parent_id = ?`,
+      [email, phone, parent_id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Parent not found' });
+    }
+    
+    res.json({ message: 'Contact information updated' });
+  } catch (error) {
+    res.status(400).json({ 
+      error: 'Update failed'
+    });
+  }
+};

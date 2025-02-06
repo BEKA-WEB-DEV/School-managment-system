@@ -1,141 +1,68 @@
-const { Student, StudentInfo } = require("../models");
-const { logger } = require("../utils/logger");
+import pool from '../config/db.js';
+import { generateStudentId } from '../utils/idGenerator.js';
 
-const studentController = {
-  // Create student with info
-  createStudent: async (req, res) => {
-    const transaction = await sequelize.transaction();
-    try {
-      const { password, ...studentData } = req.body;
+export const getStudents = async (req, res) => {
+  const { page = 1, limit = 20 } = req.query;
+  const offset = (page - 1) * limit;
 
-      // Validate student ID format
-      if (!/^STU\d{7}$/.test(studentData.student_id)) {
-        await transaction.rollback();
-        return res.status(400).json({ error: "Invalid student ID format" });
-      }
+  try {
+    // Fetch paginated students with details
+    const [students] = await pool.query(`
+      SELECT s.student_id, s.grade_level_id, s.section_id, 
+        si.first_name, si.last_name, si.date_of_birth, si.gender
+      FROM students s
+      JOIN students_info si ON s.student_id = si.student_id
+      LIMIT ? OFFSET ?
+    `, [parseInt(limit), parseInt(offset)]);
 
-      const student = await Student.create(
-        {
-          ...studentData,
-          student_password: password,
-        },
-        { transaction }
-      );
-
-      await StudentInfo.create(
-        {
-          student_id: student.student_id,
-          ...req.body,
-        },
-        { transaction }
-      );
-
-      await transaction.commit();
-      logger.info(`Student created: ${student.student_id}`);
-      res.status(201).json(student);
-    } catch (error) {
-      await transaction.rollback();
-      logger.error(`Student creation error: ${error.message}`);
-      res.status(400).json({ error: error.message });
-    }
-  },
-
-  // Get all students (paginated)
-  getAllStudents: async (req, res) => {
-    try {
-      const { page = 1, limit = 20, grade, section, status } = req.query;
-      const where = {};
-
-      if (grade) where.grade_level = grade;
-      if (section) where.section = section;
-      if (status) where.status = status;
-
-      const students = await Student.findAndCountAll({
-        where,
-        limit: parseInt(limit),
-        offset: (page - 1) * limit,
-        include: [{ model: StudentInfo, as: "details" }],
-      });
-
-      res.json({
-        total: students.count,
-        page: parseInt(page),
-        totalPages: Math.ceil(students.count / limit),
-        data: students.rows,
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Server error" });
-    }
-  },
-
-  // Get student profile
-  getStudentById: async (req, res) => {
-    try {
-      const student = await Student.findByPk(req.params.id, {
-        include: [
-          { model: StudentInfo, as: "details" },
-          { association: "Results" },
-          { association: "Attendances" },
-        ],
-      });
-
-      if (!student) return res.status(404).json({ error: "Student not found" });
-
-      // Authorization check
-      if (req.user.role !== "admin" && student.student_id !== req.user.id) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
-
-      res.json(student);
-    } catch (error) {
-      logger.error(`Student fetch error: ${error.message}`);
-      res.status(500).json({ error: "Server error" });
-    }
-  },
-
-  // Update student profile
-  updateStudent: async (req, res) => {
-    const transaction = await sequelize.transaction();
-    try {
-      const student = await Student.findByPk(req.params.id, { transaction });
-      if (!student) {
-        await transaction.rollback();
-        return res.status(404).json({ error: "Student not found" });
-      }
-
-      // Update password if provided
-      if (req.body.password) {
-        student.student_password = req.body.password;
-      }
-
-      await student.update(req.body, { transaction });
-      await StudentInfo.update(req.body, {
-        where: { student_id: req.params.id },
-        transaction,
-      });
-
-      await transaction.commit();
-      res.json(student);
-    } catch (error) {
-      await transaction.rollback();
-      logger.error(`Student update error: ${error.message}`);
-      res.status(400).json({ error: error.message });
-    }
-  },
-
-  // Deactivate student
-  deactivateStudent: async (req, res) => {
-    try {
-      const student = await Student.findByPk(req.params.id);
-      if (!student) return res.status(404).json({ error: "Student not found" });
-
-      await student.update({ status: "Inactive" });
-      logger.warn(`Student deactivated: ${req.params.id}`);
-      res.json({ message: "Student deactivated" });
-    } catch (error) {
-      res.status(500).json({ error: "Server error" });
-    }
-  },
+    // Get total count
+    const [total] = await pool.query('SELECT COUNT(*) AS total FROM students');
+    res.json({ total: total[0].total, page: parseInt(page), data: students });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch students' });
+  }
 };
 
-module.exports = studentController;
+export const createStudent = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const { details, ...studentData } = req.body;
+
+    // Auto-generate student ID
+    const student_id = generateStudentId();
+
+    // Insert into students_info
+    await connection.query(
+      'INSERT INTO students_info SET ?',
+      { ...details, student_id }
+    );
+
+    // Insert into students table
+    await connection.query('INSERT INTO students SET ?', {
+      student_id,
+      student_password: await bcrypt.hash('TempPassword123!', 10), // Force password reset
+      grade_level_id: await resolveGradeLevelId(studentData.grade_level),
+      section_id: await resolveSectionId(studentData.section),
+      school_year_id: 1, // Default
+      student_status: 'Active'
+    });
+
+    await connection.commit();
+    res.status(201).json({ student_id });
+  } catch (error) {
+    await connection.rollback();
+    res.status(400).json({ error: 'Student creation failed' });
+  } finally {
+    connection.release();
+  }
+};
+
+// Helper: Resolve grade_level to ID
+const resolveGradeLevelId = async (grade) => {
+  const [rows] = await pool.query(
+    'SELECT grade_level_id FROM grade_level WHERE grade_level = ?',
+    [grade]
+  );
+  return rows[0]?.grade_level_id;
+};

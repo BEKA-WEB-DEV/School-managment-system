@@ -1,59 +1,24 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/db");
-const { logger } = require("../utils/logger");
+import pool from '../config/db.js';
 
-const Admin = sequelize.define(
-  "Admin",
-  {
-    admin_id: {
-      type: DataTypes.STRING(10),
-      primaryKey: true,
-      allowNull: false,
-    },
-    employee_id: {
-      type: DataTypes.STRING(10),
-      allowNull: false,
-      references: {
-        model: "employees",
-        key: "employee_id",
-      },
-    },
-    username: {
-      type: DataTypes.STRING(50),
-      unique: true,
-      allowNull: false,
-    },
-    password: {
-      type: DataTypes.STRING(255),
-      allowNull: false,
-    },
-    level: {
-      type: DataTypes.ENUM("6", "5", "4"),
-      defaultValue: "4",
-    },
-  },
-  {
-    timestamps: true,
-    createdAt: "created_at",
-    updatedAt: "updated_at",
-    hooks: {
-      afterCreate: (admin) => {
-        logger.info(`Admin created: ${admin.admin_id}`);
-      },
-      afterDestroy: (admin) => {
-        logger.warn(`Admin deleted: ${admin.admin_id}`);
-      },
-    },
+export default class Admin {
+  // Create admin (linked to employee)
+  static async create(adminData) {
+    const [result] = await pool.query('INSERT INTO admins SET ?', {
+      admin_id: adminData.admin_id,
+      employee_id: adminData.employee_id,
+      username: adminData.username,
+      password: adminData.hashedPassword,
+      level: adminData.level
+    });
+    return result.insertId;
   }
-);
 
-// Association with Employee
-Admin.associate = (models) => {
-  Admin.belongsTo(models.Employee, {
-    foreignKey: "employee_id",
-    as: "employee",
-    onDelete: "CASCADE",
-  });
-};
-
-module.exports = Admin;
+  // Find admin by username
+  static async findByUsername(username) {
+    const [rows] = await pool.query(
+      'SELECT * FROM admins WHERE username = ?',
+      [username]
+    );
+    return rows[0];
+  }
+}

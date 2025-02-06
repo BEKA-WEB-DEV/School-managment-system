@@ -1,148 +1,24 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/db");
-const { logger } = require("../utils/logger");
+import pool from '../config/db.js';
 
-const Payment = sequelize.define(
-  "Payment",
-  {
-    payment_id: {
-      type: DataTypes.STRING(10),
-      primaryKey: true,
-      allowNull: false,
-    },
-    student_id: {
-      type: DataTypes.STRING(10),
-      allowNull: false,
-      references: {
-        model: "students",
-        key: "student_id",
-      },
-    },
-    amount: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-      validate: { min: 0 },
-    },
-    payment_date: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-    due_date: {
-      type: DataTypes.DATEONLY,
-      allowNull: false,
-    },
-    payment_method: {
-      type: DataTypes.ENUM("Cash", "Credit Card", "Bank Transfer", "Online"),
-      allowNull: false,
-    },
-    payment_status: {
-      type: DataTypes.ENUM("Pending", "Completed", "Failed", "Refunded"),
-      defaultValue: "Pending",
-    },
-    description: DataTypes.TEXT,
-    payment_purpose: DataTypes.STRING(255),
-    transaction_id: DataTypes.STRING(255),
-    receipt_url: DataTypes.TEXT,
-  },
-  {
-    timestamps: true,
-    createdAt: "created_at",
-    updatedAt: "updated_at",
-    indexes: [
-      { fields: ["student_id"] },
-      { fields: ["payment_date"] },
-      { fields: ["payment_status"] },
-    ],
-    hooks: {
-      afterUpdate: (payment) => {
-        if (payment.payment_status === "Completed") {
-          logger.info(`Payment completed: ${payment.payment_id}`);
-        }
-      },
-    },
+export default class Payment {
+  // Create payment record
+  static async create(paymentData) {
+    const [result] = await pool.query('INSERT INTO payments SET ?', {
+      payment_id: paymentData.payment_id,
+      student_id: paymentData.student_id,
+      amount: paymentData.amount,
+      payment_purpose: paymentData.purpose,
+      date: new Date()
+    });
+    return result.insertId;
   }
-);
 
-// Association with Student
-Payment.associate = (models) => {
-  Payment.belongsTo(models.Student, {
-    foreignKey: "student_id",
-    as: "student",
-  });
-};
-
-module.exports = Payment;
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/db");
-const { logger } = require("../utils/logger");
-
-const Payment = sequelize.define(
-  "Payment",
-  {
-    payment_id: {
-      type: DataTypes.STRING(10),
-      primaryKey: true,
-      allowNull: false,
-    },
-    student_id: {
-      type: DataTypes.STRING(10),
-      allowNull: false,
-      references: {
-        model: "students",
-        key: "student_id",
-      },
-    },
-    amount: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-      validate: { min: 0 },
-    },
-    payment_date: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-    due_date: {
-      type: DataTypes.DATEONLY,
-      allowNull: false,
-    },
-    payment_method: {
-      type: DataTypes.ENUM("Cash", "Credit Card", "Bank Transfer", "Online"),
-      allowNull: false,
-    },
-    payment_status: {
-      type: DataTypes.ENUM("Pending", "Completed", "Failed", "Refunded"),
-      defaultValue: "Pending",
-    },
-    description: DataTypes.TEXT,
-    payment_purpose: DataTypes.STRING(255),
-    transaction_id: DataTypes.STRING(255),
-    receipt_url: DataTypes.TEXT,
-  },
-  {
-    timestamps: true,
-    createdAt: "created_at",
-    updatedAt: "updated_at",
-    indexes: [
-      { fields: ["student_id"] },
-      { fields: ["payment_date"] },
-      { fields: ["payment_status"] },
-    ],
-    hooks: {
-      afterUpdate: (payment) => {
-        if (payment.payment_status === "Completed") {
-          logger.info(`Payment completed: ${payment.payment_id}`);
-        }
-      },
-    },
+  // Get payments by student
+  static async findByStudent(student_id) {
+    const [rows] = await pool.query(
+      'SELECT * FROM payments WHERE student_id = ?',
+      [student_id]
+    );
+    return rows;
   }
-);
-
-// Association with Student
-Payment.associate = (models) => {
-  Payment.belongsTo(models.Student, {
-    foreignKey: "student_id",
-    as: "student",
-  });
-};
-
-module.exports = Payment;
+}
