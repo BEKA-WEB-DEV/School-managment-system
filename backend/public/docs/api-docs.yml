@@ -1,0 +1,440 @@
+openapi: 3.0.0
+info:
+  title: School Management System API
+  version: 1.0.0
+  description: API for managing school operations with role-based access control
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development server
+  - url: https://api.schoolsystem.com/api/v1
+    description: Production server
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT authentication with role-based access
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Invalid credentials"
+        details:
+          type: array
+          items:
+            type: string
+          example: ["password must be at least 8 characters"]
+
+    Student:
+      type: object
+      properties:
+        student_id:
+          type: string
+          example: "STU-2023-AB"
+        grade_level:
+          type: string
+          example: "10th Grade"
+        section:
+          type: string
+          example: "Section A"
+        status:
+          type: string
+          enum: [Active, Inactive]
+        details:
+          $ref: "#/components/schemas/StudentInfo"
+
+    StudentInfo:
+      type: object
+      properties:
+        first_name:
+          type: string
+          example: "John"
+        last_name:
+          type: string
+          example: "Doe"
+        date_of_birth:
+          type: string
+          format: date
+          example: "2005-05-15"
+        gender:
+          type: string
+          enum: [Male, Female]
+
+    Parent:
+      type: object
+      properties:
+        parent_id:
+          type: string
+          example: "PRT-2023-XY"
+        student_id:
+          type: string
+          example: "STU-2023-AB"
+        relationship:
+          type: string
+          enum: [Parent, Guardian]
+
+    Payment:
+      type: object
+      properties:
+        payment_id:
+          type: string
+          example: "PAY-ABC123"
+        amount:
+          type: number
+          format: float
+          example: 250.00
+        payment_purpose:
+          type: string
+          example: "Tuition Fee"
+        payer_type:
+          type: string
+          enum: [parent, admin]
+        payer_id:
+          type: string
+          example: "PRT-2023-XY"
+
+    Certification:
+      type: object
+      properties:
+        cert_id:
+          type: string
+          example: "CERT-23-ABCDEF"
+        cert_type:
+          type: string
+          enum: [Course, Exam, Attendance]
+        status:
+          type: string
+          enum: [Pending, Approved, Expired]
+
+paths:
+  # ========================
+  # Authentication
+  # ========================
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: User login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userType:
+                  type: string
+                  enum: [student, employee, admin, parent]
+                  example: "parent"
+                identifier:
+                  type: string
+                  example: "PRT-2023-XY"
+                password:
+                  type: string
+                  example: "SecurePass123!"
+              required: [userType, identifier, password]
+      responses:
+        200:
+          description: Successfully logged in
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      type:
+                        type: string
+        401:
+          $ref: "#/components/responses/UnauthorizedError"
+
+  # ========================
+  # Students
+  # ========================
+  /students:
+    get:
+      tags: [Students]
+      summary: Get all students
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        200:
+          description: List of students
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Student"
+    
+    post:
+      tags: [Students]
+      summary: Create new student
+      security:
+        - bearerAuth: [admin, registrar]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Student"
+      responses:
+        201:
+          description: Student created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Student"
+
+  # ========================
+  # Parents
+  # ========================
+  /parents:
+    post:
+      tags: [Parents]
+      summary: Create parent account
+      security:
+        - bearerAuth: [admin, registrar]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                father_first_name:
+                  type: string
+                mother_first_name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
+                  pattern: '^[0-9]{10,15}$'
+                password:
+                  type: string
+                  minLength: 8
+      responses:
+        201:
+          description: Parent created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Parent"
+
+  /parents/students:
+    get:
+      tags: [Parents]
+      summary: Get linked students
+      security:
+        - bearerAuth: [parent]
+      responses:
+        200:
+          description: List of linked students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Student"
+
+  /parents/payments:
+    post:
+      tags: [Parents]
+      summary: Make payment for student
+      security:
+        - bearerAuth: [parent]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                student_id:
+                  type: string
+                  pattern: '^STU-\d{4}-[A-Z0-9]{6}$'
+                amount:
+                  type: number
+                  minimum: 1
+                payment_purpose:
+                  type: string
+                  enum: [Tuition, Books, Uniform, Other]
+      responses:
+        201:
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  # ========================
+  # Payments
+  # ========================
+  /payments:
+    post:
+      tags: [Payments]
+      summary: Create payment (Admin)
+      security:
+        - bearerAuth: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Payment"
+      responses:
+        201:
+          description: Payment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  # ========================
+  # Certifications
+  # ========================
+  /certifications:
+    post:
+      tags: [Certifications]
+      summary: Issue certificate
+      security:
+        - bearerAuth: [teacher, academic]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Certification"
+      responses:
+        201:
+          description: Certificate issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Certification"
+
+  /certifications/{cert_id}/approve:
+    patch:
+      tags: [Certifications]
+      summary: Approve certificate
+      security:
+        - bearerAuth: [admin, registrar]
+      parameters:
+        - in: path
+          name: cert_id
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Certificate approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Certification"
+
+responses:
+  UnauthorizedError:
+    description: Missing or invalid authentication
+    content:
+      application/json:
+        schema:
+          $ref: "#/components/schemas/ErrorResponse"
+  ValidationError:
+    description: Invalid request data
+    content:
+      application/json:
+        schema:
+          $ref: "#/components/schemas/ErrorResponse"
+
+
+# Backend Folder Structure:
+#           school-management-api/  
+# ├── config/ 
+# │   ├── db.js              # MySQL connection pool  
+# │   └── env.js             # Environment validation  
+# ├── controllers/  
+# │   ├── authController.js  
+# │   ├── studentController.js  
+# │   ├── employeeController.js  
+# │   ├── examController.js  
+# │   ├── paymentController.js  
+# │   ├── parentController.js  
+# │   └── certificationController.js  
+# ├── middleware/  
+# │   ├── auth/  
+# │   │   ├── authenticate.js      # JWT verification  
+# │   │   └── authorizeRoles.js    # Role-based access  
+# │   ├── validation/  
+# │   │   ├── studentSchema.js  
+# │   │   ├── employeeSchema.js  
+# │   │   ├── examSchema.js  
+# │   │   ├── paymentSchema.js  
+# │   │   └── certificationSchema.js  
+# │   ├── errorHandler.js          # Global error handler  
+# │   └── rateLimiter.js           # Rate limiting  
+# ├── models/  
+# │   ├── Student.js  
+# │   ├── Employee.js  
+# │   ├── Admin.js  
+# │   ├── Exam.js  
+# │   ├── Payment.js  
+# │   ├── Parent.js  
+# │   ├── Certification.js  
+# │   ├── Section.js  
+# │   └── Subject.js  
+# ├── routes/  
+# │   ├── authRoutes.js  
+# │   ├── studentRoutes.js  
+# │   ├── employeeRoutes.js  
+# │   ├── examRoutes.js  
+# │   ├── paymentRoutes.js  
+# │   ├── parentRoutes.js  
+# │   └── certificationRoutes.js  
+# ├── utils/  
+# │   ├── idGenerator.js      # Auto-generate IDs (STU/EMP/PAY/CERT)  
+# │   ├── passwordUtils.js    # Bcrypt hashing/validation  
+# │   ├── jwtUtils.js         # Token generation/verification  
+# │   ├── notifier.js         # Email/SMS notifications  
+# │   └── expiryCheck.js      # Certificate expiry automation  
+# ├── public/  
+# │   └── docs/  
+# │       └── api-docs.yml     # OpenAPI specification  
+# ├── migrations/              # SQL schema migration files  
+# ├── tests/                   # Unit/integration tests  
+# ├── .env                     # Environment variables  
+# ├── .gitignore  
+# ├── app.js                   # Express app setup  
+# ├── server.js                # Server entry + cron jobs  
+# └── package.json  

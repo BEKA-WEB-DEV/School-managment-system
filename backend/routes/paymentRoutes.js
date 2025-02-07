@@ -1,27 +1,26 @@
 import express from 'express';
 import { createPayment } from '../controllers/paymentController.js';
 import { authenticate, authorizeRoles } from '../middleware/auth.js';
-import { paymentSchema } from '../middleware/validation/paymentSchema.js';
-import { rateLimiter } from '../middleware/rateLimiter.js';
+import { validatePayment } from '../middleware/validation/paymentSchema.js';
+import { authRateLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
 // POST /payments (Admin only)
 router.post(
   '/',
-  authenticate(),
+  authenticate,
   authorizeRoles('admin'),
-  rateLimiter,
-  paymentSchema,
+  authRateLimiter,
+  validatePayment,
   createPayment
 );
 
 router.post(
   '/:parent_id/payments',
-  authenticate(),
+  authenticate,
   authorizeRoles('parent'),
-  validateParentPayment,
-  createParentPayment
+  createPayment 
 );
 
 export default router;

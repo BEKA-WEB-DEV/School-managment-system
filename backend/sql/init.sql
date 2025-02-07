@@ -209,5 +209,21 @@ CREATE TABLE certifications (
   approved_by VARCHAR(10),
   approval_date DATE,
   FOREIGN KEY (student_id) REFERENCES students(student_id),
-  FOREIGN KEY (approved_by) REFERENCES admins(admin_id)
+  FOREIGN KEY (approved_by) REFERENCES approval_logs(admin_id)
+);
+
+CREATE TABLE certification_metadata (
+  cert_type ENUM('1st Semester', '2nd Semester', '3rd Semester', '4th Semester', 'Total') PRIMARY KEY,
+  template_path VARCHAR(255) NOT NULL, -- e.g., PDF template storage path
+  validity_period INT -- Expiry duration in days
+);
+
+CREATE TABLE approval_logs (
+  log_id INT AUTO_INCREMENT PRIMARY KEY,
+  cert_id VARCHAR(20) NOT NULL,
+  action ENUM('Requested', 'Approved', 'Rejected') NOT NULL,
+  admin_id VARCHAR(10) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (cert_id) REFERENCES certifications(cert_id),
+  FOREIGN KEY (admin_id) REFERENCES admins(admin_id)
 );

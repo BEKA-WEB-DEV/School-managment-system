@@ -55,3 +55,30 @@ export const makePayment = async (req, res) => {
     connection.release();
   }
 };
+
+// create payment admin only
+export const createPayment = async (req, res) => {
+  const { student_id, amount, payment_purpose } = req.body;
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // Create payment record
+    const payment_id = generatePaymentId();
+    await connection.query(
+      `INSERT INTO payments 
+      (payment_id, student_id, amount, payment_purpose, payer_type, payer_id)
+      VALUES (?, ?, ?, ?, 'admin', ?)`,
+      [payment_id, student_id, amount, payment_purpose, req.user.id]
+    );
+
+    await connection.commit();
+    res.status(201).json({ payment_id });
+  } catch (error) {
+    await connection.rollback();
+    res.status(400).json({ error: 'Payment failed' });
+  } finally {
+    connection.release();
+  }
+};

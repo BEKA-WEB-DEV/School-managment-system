@@ -163,3 +163,10 @@ export const updateParentContact = async (req, res) => {
     });
   }
 };
+
+export const makePayment = async (req, res) => {
+  // Payment processing logic
+  res.json({ message: 'Payment successful' });
+
+
+}

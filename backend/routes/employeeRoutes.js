@@ -5,14 +5,14 @@ import {
 } from '../controllers/employeeController.js';
 import { authenticate, authorizeRoles } from '../middleware/auth.js';
 import { employeeSchema } from '../middleware/validation/employeeSchema.js';
-import { rateLimiter } from '../middleware/rateLimiter.js';
+import { authRateLimiter, globalRateLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
 // GET /employees (Admin only)
 router.get(
   '/',
-  authenticate(),
+  authenticate,
   authorizeRoles('admin'),
   getEmployees
 );
@@ -20,9 +20,10 @@ router.get(
 // POST /employees (Admin only)
 router.post(
   '/',
-  authenticate(),
-  authorizeRoles('admin'),
-  rateLimiter,
+  authenticate,
+  authorizeRoles('admin', 'registrar'),
+  authRateLimiter,
+  globalRateLimiter,
   employeeSchema,
   createEmployee
 );

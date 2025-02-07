@@ -1,26 +1,21 @@
 import express from 'express';
 import { 
-  getLinkedStudents,
-  makePayment
+  createParent, 
+  linkStudentToParent, 
+  getParentStudents, 
+  makePayment 
 } from '../controllers/parentController.js';
-import { authenticate } from '../middleware/auth.js';
-import { paymentSchema } from '../middleware/validation/paymentSchema.js';
+import { authenticate, authorizeRoles } from '../middleware/auth.js';
+import {parentPaymentSchema} from '../middleware/validation/parentSchema.js';
+import { authRateLimiter, globalRateLimiter } from '../middleware/rateLimiter.js';
 
 const router = express.Router();
+// Admin/Registrar-only endpoints
+router.post('/', authenticate, authorizeRoles('admin', 'registrar'),authRateLimiter, globalRateLimiter , parentPaymentSchema, createParent);
+router.post('/:parent_id/link', authenticate, authorizeRoles('admin', 'registrar'), authRateLimiter, globalRateLimiter, linkStudentToParent);
 
-// GET /parents/students - Get linked students
-router.get(
-  '/students',
-  authenticate('parent'),
-  getLinkedStudents
-);
-
-// POST /parents/payments - Make payment for student
-router.post(
-  '/payments',
-  authenticate('parent'),
-  paymentSchema,
-  makePayment
-);
+// Parent-specific endpoints
+router.get('/students', authenticate, authorizeRoles('parent'), getParentStudents);
+router.post('/payments', authenticate, authorizeRoles('parent'), authRateLimiter, globalRateLimiter, parentPaymentSchema, makePayment);
 
 export default router;

@@ -1,6 +1,7 @@
 import Joi from 'joi';
 
-export const examSchema = Joi.object({
+export const examSchema = (req, res, next) => {
+const schema = Joi.object({
   exam_datetime: Joi.date().iso().required(),
   duration: Joi.number().integer().positive().required(),
   grade_level: Joi.string()
@@ -14,3 +15,8 @@ export const examSchema = Joi.object({
     .valid('1st Semester', '2nd Semester', '3rd Semester', '4th Semester')
     .required()
 });
+
+const { error } = schema.validate(req.body);
+if (error) return res.status(400).json({ error: error.details[0].message });
+next();
+}

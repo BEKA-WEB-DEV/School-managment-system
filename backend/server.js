@@ -1,6 +1,7 @@
 import { env } from './config/env.js';
 import app from './app.js';
-import pool from './config/db.js';
+// const pool = require('./config/db.js');
+import  pool  from './config/db.js';
 
 const PORT = env.PORT || 3000;
 

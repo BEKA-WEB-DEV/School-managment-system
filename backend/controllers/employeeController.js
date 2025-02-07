@@ -55,8 +55,9 @@ export const createEmployee = async (req, res) => {
       (employee_id, employee_password, autorized_leave)
       VALUES (?, ?, ?)`,
       [
-        employee_password: await hashPassword('TempPassword123!'),
-        employeeInfo.autorized_leave || '0'
+        employee_id, // employee_id
+        await hashPassword('TempPassword123!'), // hashed password
+        employeeInfo.autorized_leave || '0' // authorized leave (default to '0')
       ]
     );
 
