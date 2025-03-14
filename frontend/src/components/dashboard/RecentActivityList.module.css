@@ -1,0 +1,22 @@
+.recentActivityList {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .recentActivityList h3 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+  }
+  
+  .activityItem {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .activityItem:last-child {
+    border-bottom: none;
+  }

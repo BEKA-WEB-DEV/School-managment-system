@@ -1,33 +1,114 @@
-import { verifyToken } from '../utils/jwtUtils.js';
-import pool from '../config/db.js';
+// import { verifyToken } from '../config/jwt.js';
+// import pool from '../config/db.js';
+// import { ForbiddenError, UnauthorizedError } from './errorHandler.js';
+
+// export const authenticate = async (req, res, next) => {
+//   try {
+//     const token = req.cookies.jwt;
+//     if (!token) throw new UnauthorizedError('Authentication required');
+
+//     const decoded = verifyToken(token);
+    
+//     // Verify user exists in database
+//     const [user] = await pool.execute(
+//       'SELECT user_id, role, email FROM users WHERE user_id = ?',
+//       [decoded.id]
+//     );
+
+//     if (!user[0]) throw new UnauthorizedError('Invalid token');
+    
+//     req.user = {
+//       id: user[0].user_id,
+//       role: user[0].role,
+//       email: user[0].email
+//     };
+
+//     next();
+//   } catch (err) {
+//     next(err);
+//   }
+// };
+
+// import AuthService from '../services/AuthService.js';
+// import { ForbiddenError, UnauthorizedError } from './errorHandler.js';
+
+// export const authenticate = async (req, res, next) => {
+//   try {
+//     const token = req.cookies.jwt;
+//     if (!token) throw new UnauthorizedError('Authentication required');
+
+//     const decoded = await AuthService.verifyToken(token);
+//     req.user = decoded;
+//     next();
+//   } catch (err) {
+//     next(new UnauthorizedError(err.message));
+//   }
+// };
+
+// // Role-based access middleware
+
+
+
+// export const restrictTo = (...allowedRoles) => (req, res, next) => {
+//   if (!allowedRoles.includes(req.user.role)) {
+//     return next(new ForbiddenError('Access denied'));
+//   }
+//   next();
+// };
+// import AuthService from '../services/AuthService.js';
+import jwt from 'jsonwebtoken';
+import { JWT_CONFIG } from '../config/constants.js';
+import { ForbiddenError, UnauthorizedError } from './errorHandler.js';
 
 export const authenticate = async (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Authentication required' });
-
   try {
-    const decoded = verifyToken(token);
+    // Check for token in cookies or Authorization header
+    const token = req.cookies?.jwt || req.headers.authorization?.split(' ')[1];
     
-    // Verify user exists in the database
-    const [user] = await pool.query(
-      `SELECT * FROM ${decoded.type}s WHERE ${decoded.type}_id = ?`,
-      [decoded.id]
-    );
-    if (!user[0]) throw new Error('User not found');
+    if (!token) {
+      throw new UnauthorizedError('Authentication required');
+    }
 
-    req.user = { id: decoded.id, type: decoded.type };
+    // Verify token
+    const decoded = jwt.verify(token, JWT_CONFIG.SECRET);
+    
+    // Attach user to request
+    req.user = {
+      id: decoded.id,
+      role: decoded.role,
+      email: decoded.email
+    };
+
     next();
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid or expired token' });
+  } catch (err) {
+    next(new UnauthorizedError('Invalid or expired token'));
   }
 };
 
-export const authorizeRoles = (...allowedRoles) => {
-  // Return a middleware FUNCTION (not a Promise)
-  return (req, res, next) => {
-    if (!allowedRoles.includes(req.user.type)) {
-      return res.status(403).json({ error: "Access denied" });
+export const restrictTo = (...roles) => (req, res, next) => {
+  if (req.user.role === 'admin') 
+    return next();
+  
+  if (!roles.includes(req.user.role)) {
+    return next(new ForbiddenError('Insufficient permissions'));
+  }
+  next();
+};
+
+
+export const parentChildAccess = async (req, res, next) => {
+  try {
+    const studentId = req.params.student_id;
+    const [student] = await pool.execute(
+      'SELECT parent_id FROM students WHERE student_id = ?',
+      [studentId]
+    );
+    
+    if (!student[0] || student[0].parent_id !== req.user.parent_id) {
+      throw new ForbiddenError('Access to child data denied');
     }
     next();
-  };
+  } catch (err) {
+    next(err);
+  }
 };

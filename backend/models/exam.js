@@ -1,25 +1,29 @@
 import pool from '../config/db.js';
 
 export default class Exam {
-  // Schedule new exam
   static async create(examData) {
-    const [result] = await pool.query('INSERT INTO exams SET ?', {
-      exam_id: examData.exam_id,
-      exam_datetime: examData.exam_datetime,
-      duration: examData.duration,
-      grade_level_id: examData.grade_level_id,
-      section_id: examData.section_id,
-      employee_id: examData.employee_id,
-      school_year_id: 1 // Default
-    });
-    return result.insertId;
+    const [result] = await pool.execute(
+      `INSERT INTO exams SET ?`,
+      [examData]
+    );
+    return this.findById(examData.exam_id);
   }
 
-  // Get exams by grade level
-  static async findByGradeLevel(grade_level_id) {
-    const [rows] = await pool.query(
-      'SELECT * FROM exams WHERE grade_level_id = ?',
-      [grade_level_id]
+  static async findById(exam_id) {
+    const [rows] = await pool.execute(
+      'SELECT * FROM exams WHERE exam_id = ?',
+      [exam_id]
+    );
+    return rows[0];
+  }
+
+  static async getResults(exam_id) {
+    const [rows] = await pool.execute(
+      `SELECT er.*, s.first_name, s.last_name
+       FROM exam_results er
+       JOIN students s ON er.student_id = s.student_id
+       WHERE er.exam_id = ?`,
+      [exam_id]
     );
     return rows;
   }

@@ -1,23 +1,35 @@
 import pool from '../config/db.js';
 
 export default class Payment {
-  // Create payment record
   static async create(paymentData) {
-    const [result] = await pool.query('INSERT INTO payments SET ?', {
-      payment_id: paymentData.payment_id,
-      student_id: paymentData.student_id,
-      amount: paymentData.amount,
-      payment_purpose: paymentData.purpose,
-      date: new Date()
-    });
-    return result.insertId;
+    const [result] = await pool.execute(
+      `INSERT INTO payments SET ?`,
+      [paymentData]
+    );
+    return this.findById(paymentData.payment_id);
   }
 
-  // Get payments by student
-  static async findByStudent(student_id) {
-    const [rows] = await pool.query(
-      'SELECT * FROM payments WHERE student_id = ?',
-      [student_id]
+  static async findById(payment_id) {
+    const [rows] = await pool.execute(
+      'SELECT * FROM payments WHERE payment_id = ?',
+      [payment_id]
+    );
+    return rows[0];
+  }
+
+  static async updateStatus(payment_id, newStatus) {
+    await pool.execute(
+      `UPDATE payments SET status = ?
+       WHERE payment_id = ?`,
+      [newStatus, payment_id]
+    );
+  }
+
+  static async getPaymentsByParent(parent_id) {
+    const [rows] = await pool.execute(
+      `SELECT * FROM payments
+       WHERE parent_id = ?`,
+      [parent_id]
     );
     return rows;
   }

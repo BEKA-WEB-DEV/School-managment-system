@@ -1,0 +1,15 @@
+.certificationsPage {
+    padding: 2rem;
+}
+
+.certificationsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.noCerts {
+    text-align: center;
+    color: #7f8c8d;
+}

@@ -1,29 +1,14 @@
-export const generateEmployeeId = () => {
-    const randomChars = Math.random().toString(36).slice(-4).toUpperCase();
-    return `EMP-${Date.now().toString().slice(-6)}-${randomChars}`;
-  };
-  
-  export const generatePaymentId = () => {
-    const randomChars = Math.random().toString(36).slice(-4).toUpperCase();
-    return `PAY-${Date.now().toString().slice(-6)}-${randomChars}`;
+export const generateUserId = (role) => {
+    const prefix = role.toUpperCase().substring(0, 3); // 3 chars (e.g., "ADM")
+    const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0'); // 3-digit random number
+    return `${prefix}-${timestamp}-${random}`; // Total length: 3 + 1 + 6 + 1 + 3 = 14 chars
   };
 
-  export const generateStudentId = () => {
-    const randomChars = Math.random().toString(36).slice(-4).toUpperCase();
-    return `STU-${Date.now().toString().slice(-6)}-${randomChars}`;
-  };
-  
-  export const generateParentId = () => {
-    const randomChars = Math.random().toString(36).slice(-4).toUpperCase();
-    return `PAR-${Date.now().toString().slice(-6)}-${randomChars}`;
-  };
+  //Example Outputs:
 
-    export const generateExamId = () => {
-    const randomChars = Math.random().toString(36).slice(-4).toUpperCase();
-    return `EXM-${Date.now().toString().slice(-6)}-${randomChars}`;
-  }; 
+// ADM-123456-789
 
-  export const generateCertId = () => {
-    const randomChars = Math.random().toString(36).slice(-4).toUpperCase();
-    return `CERT-${Date.now().toString().slice(-6)}-${randomChars}`;
-  }; 
+// TCH-987654-321
+
+// STU-456789-123
